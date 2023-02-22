@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tidy_BMG_microplate"
+version = "1.0.0"
+authors = [{name="Jakob madsen", email="jsmadsen@sund.ku.dk" }]
+description = "Convert XLSX files exported from BMG MARS Data Analysis Software to a tidy CSV file"
+readme = "README.md"
+dependencies = ["pandas","openpyxl"]
+requires-python = ">=3.9"
+
+[project.scripts]
+tidy_microplate = "tidy_microplate:main"
+
+[project.urls]
+"Homepage" = "https://github.com/HauserGroup/tidy_BMG_microplate"
+"Bug Tracker" = "https://github.com/HauserGroup/tidy_BMG_microplate/issues"
