@@ -8,7 +8,7 @@ Install with
 
 ```
 python3 -m venv .venv
-source .venv/bin/acitvate
+source .venv/bin/activate
 
 pip install .
 ``` 
