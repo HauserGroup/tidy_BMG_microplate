@@ -27,20 +27,25 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    wb = openpyxl.load_workbook(args.filename, read_only=True, data_only=True)
-    all_data = tidy_microplate(wb)
+    tidy_microplate(args.filename, args.output)
+
+
+def tidy_microplate(filename: str, output: str | None) -> pd.DataFrame:
+    """Tidy the microplate data from the Excel file."""
+    wb = openpyxl.load_workbook(filename, read_only=True, data_only=True)
+    all_data = tidy_data(wb)
     df = create_dataframe(all_data)
 
-    if args.output:
-        output = args.output
-    else:
-        output = args.filename.replace(".xlsx", ".csv")
+    if output is None:
+        output = filename.replace(".xlsx", ".csv")
 
     print(f"Writing to {output}")
     df.to_csv(output, index=False)
 
+    return df
 
-def tidy_microplate(wb: openpyxl.Workbook) -> list[dict]:
+
+def tidy_data(wb: openpyxl.Workbook) -> list[dict]:
     """
     Tidy the microplate data from the Excel file.
     """
