@@ -1,16 +1,19 @@
 # %%
 # pylint: disable=invalid-name, missing-module-docstring
+
+# Standard library imports
 import argparse
 import re
 import sys
 from datetime import datetime
+from pathlib import Path
 from warnings import warn
-from typing import TYPE_CHECKING
 
+# Third-party imports
 import openpyxl
 import pandas as pd
 
-if (sys.version_info < (3, 9)) | TYPE_CHECKING:
+if sys.version_info < (3, 9):
     warn("This script requires Python 3.9 or higher")
     sys.exit(1)
 
@@ -32,12 +35,23 @@ def main() -> None:
 
 def tidy_microplate(filename: str, output: str | None) -> pd.DataFrame:
     """Tidy the microplate data from the Excel file."""
-    wb = openpyxl.load_workbook(filename, read_only=True, data_only=True)
+    # Check file existence
+    input_path = Path(filename)
+    if not input_path.exists():
+        print(f"Error: File not found: {filename}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        wb = openpyxl.load_workbook(filename, read_only=True, data_only=True)
+    except Exception as e:
+        print(f"Error loading file: {e}", file=sys.stderr)
+        sys.exit(1)
+
     all_data = tidy_data(wb)
     df = create_dataframe(all_data)
 
     if output is None:
-        output = filename.replace(".xlsx", ".csv")
+        output = str(input_path.with_suffix(".csv"))
 
     print(f"Writing to {output}")
     df.to_csv(output, index=False)
@@ -63,8 +77,12 @@ def tidy_data(wb: openpyxl.Workbook) -> list[dict]:
             if c0 is None:
                 continue
 
+            # Skip non-string values
+            if not isinstance(c0, str):
+                continue
+
             # Add metadata
-            if not re.match(r"\s?Raw Data", c0):
+            if not re.match(r"^\s?Raw Data", c0):
                 # Skip miscellaneous info
                 if c0.startswith(("User", "Path", "Test", "Luminescence")):
                     continue
@@ -72,27 +90,27 @@ def tidy_data(wb: openpyxl.Workbook) -> list[dict]:
                 # Get IDs
                 elif c0.startswith("ID"):
                     reg = re.search(r"^(ID\d): (.*)$", c0)
-                    assert (
-                        reg is not None
-                    ), f"ID did not match format ID1: foo, got {c0}"
+                    assert reg is not None, (
+                        f"ID did not match format ID1: foo, got {c0}"
+                    )
                     metadata[reg.group(1)] = reg.group(2)
                     continue
 
                 # Get date
                 elif c0.startswith("Date"):
-                    reg = re.search(r"^Date: (\d{2}-\d{2}-\d{4}$)", c0)
-                    assert (
-                        reg is not None
-                    ), f"Date did not match format dd-mm-yyyy, got {c0}"
+                    reg = re.search(r"^Date: (\d{2}-\d{2}-\d{4})$", c0)
+                    assert reg is not None, (
+                        f"Date did not match format dd-mm-yyyy, got {c0}"
+                    )
                     day = reg.group(1)
                     continue
 
                 # Get time
                 elif c0.startswith("Time"):
-                    reg = re.search(r"^Time: (\d{2}:\d{2}:\d{2}$)", c0)
-                    assert (
-                        reg is not None
-                    ), f"Time did not match format hh:mm:ss, got {c0}"
+                    reg = re.search(r"^Time: (\d{2}:\d{2}:\d{2})$", c0)
+                    assert reg is not None, (
+                        f"Time did not match format hh:mm:ss, got {c0}"
+                    )
                     metadata["date"] = datetime.strptime(
                         f"{day} {reg.group(1)}", "%d-%m-%Y %H:%M:%S"
                     )
@@ -133,6 +151,10 @@ def tidy_data(wb: openpyxl.Workbook) -> list[dict]:
                 ), "Wells, contents, and groups must be defined before getting values"
 
                 for well, sample, group, value in zip(wells, contents, groups, row[2:]):
+                    # Skip non-string wells
+                    if not isinstance(well, str):
+                        continue
+
                     data = {}
 
                     # Add channel and time
